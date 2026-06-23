@@ -20,4 +20,10 @@ curl -L -o ./dataset/nslkdd.zip \
 cd dataset/ && unzip nslkdd.zip && rm -rf nsl-kdd/
 ```
 
+or simply run the `experiment-setup.sh` script through:
+
+```bash
+bash experiment-setup.sh
+```
+
 This will pull the dataset from kaggle and extracts the contents of nsl-kdd dataset to the `dataset` folder.
