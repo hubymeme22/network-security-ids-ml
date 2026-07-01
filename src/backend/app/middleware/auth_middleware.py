@@ -31,20 +31,22 @@ class AuthMetricsRoute(APIRoute):
                 matched_user = sa.select(sa.func.count()).select_from(UserTable).where(
                     UserTable.session == bearer_token
                 )
-
                 session_match = db.execute(matched_user).scalar()
-                if session_match > 0:
-                    response: Response = await original_handler(request)
-                    return response
-
-                return Response(
-                    content="Invalid token",
-                    status_code=403,
-                )
-
             except Exception as e:
-                logger.error(e)
+                logger.error(f"Auth middleware error: {e}")
+                return Response(
+                    content="Internal server error",
+                    status_code=500,
+                )
             finally:
                 db.close()
+
+            if session_match > 0:
+                return await original_handler(request)
+
+            return Response(
+                content="Invalid token",
+                status_code=403,
+            )
 
         return custom_handler
