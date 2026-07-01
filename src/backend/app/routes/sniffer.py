@@ -6,7 +6,7 @@ from app.background.sniffer_worker import sniffer_manager
 from fastapi import APIRouter, HTTPException
 
 logger = logging.getLogger("uvicorn.error")
-sniffer_router = APIRouter(prefix="/sniffer")
+sniffer_router = APIRouter(prefix="/sniffer", route_class=AuthMetricsRoute)
 
 
 @sniffer_router.get("/filter")
