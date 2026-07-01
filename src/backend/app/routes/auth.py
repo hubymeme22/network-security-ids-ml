@@ -3,48 +3,64 @@ import secrets
 
 from app.models.auth_schema import LoginRequest
 from app.models.auth_schema import LoginResponse
-from app.config.app_config import DEFAULT_USERNAME
-from app.config.app_config import DEFAULT_PASSWORD
+from app.models.auth_db_schema import UserTable
+from app.config.database import get_db_session
+from sqlalchemy.orm import Session
+from sqlalchemy import and_
 from fastapi import APIRouter
+from fastapi import Depends
 from fastapi import HTTPException
 from fastapi import status
 
-
 auth_router = APIRouter(prefix="/auth")
-ACTIVE_SESSIONS: set[str] = set()
 
 
 @auth_router.post("/login")
-def login_router(login_packet: LoginRequest) -> LoginResponse:
-    global current_session
+def login_router(
+    login_packet: LoginRequest,
+    db: Session = Depends(get_db_session)
+) -> LoginResponse:
+    """
+    Straightforward login authentication route
+    """
+    try:
+        # find matching account
+        hashed_password = hashlib.sha256(login_packet.password).hexdigest()
+        valid_user = db.query(UserTable).where(
+            and_(
+                UserTable.username == login_packet.username,
+                UserTable.hashed_password == hashed_password
+            )
+        ).first()
 
-    is_valid_user = secrets.compare_digest(login_packet.username, DEFAULT_USERNAME)
-    is_valid_pass = secrets.compare_digest(login_packet.password, DEFAULT_PASSWORD)
+        if valid_user:
+            random_bytes = secrets.token_bytes(32)
+            session_hash = hashlib.sha256(random_bytes).hexdigest()
 
-    if is_valid_user and is_valid_pass:
-        random_bytes = secrets.token_bytes(32)
-        session_hash = hashlib.sha256(random_bytes).hexdigest()
+            # update session for user (to logout of other devices)
+            valid_user.session = session_hash
+            db.commit()
 
-        ACTIVE_SESSIONS.add(session_hash)
-        return LoginResponse(
-            session=session_hash,
-            success=True,
+            return LoginResponse(
+                session=session_hash,
+                success=True,
+            )
+
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Invalid credentials layout."
+        )
+    except Exception:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Bad Request"
         )
 
-    # FastAPI standard for handling authentication rejections cleanly
-    raise HTTPException(
-        status_code=status.HTTP_403_FORBIDDEN,
-        detail="Invalid credentials layout."
-    )
 
-
-@auth_router.delete("/logout")
-def logout_session(session_token) -> LoginResponse:
-    if session_token in ACTIVE_SESSIONS:
-            ACTIVE_SESSIONS.remove(session_token)
-            return { "message": "Successfully destroyed session" }
-            
-    raise HTTPException(
-        status_code=status.HTTP_404_NOT_FOUND,
-        detail="Session token not found or already expired."
-    )
+@auth_router.delete("/logout/{session_token}")
+def logout_session(
+    session_token: str,
+    db: Session = Depends(get_db_session)
+) -> LoginResponse:
+    db.query(UserTable).where(UserTable.session == session_token).delete()
+    return None
