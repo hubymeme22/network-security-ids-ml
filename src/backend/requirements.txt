@@ -1,2 +1,6 @@
 fastapi
 scapy
+numpy
+scipy
+scikit-learn
+xgboost
