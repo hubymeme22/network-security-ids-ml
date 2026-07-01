@@ -1,4 +1,5 @@
 from pydantic import BaseModel
+from typing_extensions import Optional
 
 class LoginRequest(BaseModel):
     username: str
@@ -6,5 +7,5 @@ class LoginRequest(BaseModel):
 
 
 class LoginResponse(BaseModel):
-    session: str
+    session: Optional[str]
     success: bool

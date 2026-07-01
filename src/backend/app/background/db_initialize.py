@@ -32,7 +32,7 @@ def initalize_database_contents():
             if is_table_empty(db, UserTable):
                 db.add(UserTable(
                     username=DEFAULT_USERNAME,
-                    hashed_password=hashlib.sha256(DEFAULT_PASSWORD).hexdigest(),  
+                    hashed_password=hashlib.sha256(DEFAULT_PASSWORD.encode()).hexdigest(),  
                     is_active=True
                 ))
 

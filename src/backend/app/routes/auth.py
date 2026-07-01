@@ -1,4 +1,5 @@
 import hashlib
+import logging
 import secrets
 
 from app.models.auth_schema import LoginRequest
@@ -10,22 +11,26 @@ from sqlalchemy import and_
 from fastapi import APIRouter
 from fastapi import Depends
 from fastapi import HTTPException
+from fastapi import Response
 from fastapi import status
 
 auth_router = APIRouter(prefix="/auth")
+logger = logging.getLogger("uvicorn.error")
 
 
 @auth_router.post("/login")
 def login_router(
     login_packet: LoginRequest,
-    db: Session = Depends(get_db_session)
+    response: Response,
+    db: Session = Depends(get_db_session),
 ) -> LoginResponse:
     """
     Straightforward login authentication route
     """
     try:
         # find matching account
-        hashed_password = hashlib.sha256(login_packet.password).hexdigest()
+        hashed_password = hashlib.sha256(login_packet.password.encode()).hexdigest()
+        logger.info(f"user={login_packet.username} pass={hashed_password}")
         valid_user = db.query(UserTable).where(
             and_(
                 UserTable.username == login_packet.username,
@@ -46,11 +51,14 @@ def login_router(
                 success=True,
             )
 
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Invalid credentials layout."
+        response.status_code = 403
+        return LoginResponse(
+            session=None,
+            success=False,
         )
-    except Exception:
+
+    except Exception as e:
+        logger.error(e)
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Bad Request"
@@ -60,7 +68,8 @@ def login_router(
 @auth_router.delete("/logout/{session_token}")
 def logout_session(
     session_token: str,
+    response: Response,
     db: Session = Depends(get_db_session)
-) -> LoginResponse:
+):
     db.query(UserTable).where(UserTable.session == session_token).delete()
-    return None
+    response.status_code = 204
