@@ -8,4 +8,4 @@ class UserTable(Base):
     username = Column(String, unique=True, index=True, nullable=False)
     hashed_password = Column(String, nullable=False)
     is_active = Column(Boolean, default=True)
-
+    session = Column(String, unique=True, index=True, nullable=True)
