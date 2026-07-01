@@ -27,3 +27,6 @@ bash experiment-setup.sh
 ```
 
 This will pull the dataset from kaggle and extracts the contents of nsl-kdd dataset to the `dataset` folder.
+
+## Application Setup
+

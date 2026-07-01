@@ -1,0 +1,63 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Geist", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-mono: "Space Mono", "Fira Code", monospace;
+
+  /* Sleek, professional dark-mode design system */
+  --color-cyber-bg: #090c15;
+  --color-cyber-card: #0f1322;
+  --color-cyber-card-hover: #131a30;
+  --color-cyber-border: #1a2238;
+  --color-cyber-border-focus: #3b82f6;
+  
+  --color-accent-primary: #6366f1;  /* Soft Indigo */
+  --color-accent-primary-hover: #4f46e5;
+  --color-accent-cyan: #06b6d4;     /* Info/Neutral Cyan */
+  --color-accent-emerald: #10b981;  /* Clean Green */
+  --color-accent-amber: #f59e0b;    /* Warm Amber */
+  --color-accent-rose: #f43f5e;     /* Muted Rose/Red */
+  --color-accent-gray: #4b5563;
+
+  /* Custom animations */
+  --animate-scan: scan 4s linear infinite;
+  --animate-terminal-cursor: blink 1s step-end infinite;
+  --animate-pulse-slow: pulse-slow 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+@keyframes scan {
+  0% { transform: translateY(-100%); }
+  100% { transform: translateY(1000%); }
+}
+
+@keyframes blink {
+  50% { opacity: 0; }
+}
+
+@keyframes pulse-slow {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+/* Custom Scrollbar for modern dashboards */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #090c15;
+}
+::-webkit-scrollbar-thumb {
+  background: #1a2238;
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #6366f1;
+}
+
+/* Utilities */
+.glassmorphism {
+  background: rgba(15, 19, 34, 0.7);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
