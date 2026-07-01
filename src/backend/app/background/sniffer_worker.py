@@ -6,12 +6,49 @@ from collections import deque
 from scapy.layers.inet import IP, TCP, UDP, ICMP
 from scapy.packet import Packet
 from scapy.all import sniff
+from typing import Any
+
 
 logger = logging.getLogger("uvicorn.error")
 
+class EvictingAsyncQueue:
+    """
+    Asyncronous DSA that removes old queued packets
+    """
+    def __init__(self, maxsize: int):
+        self.maxsize = maxsize
+        self._queue: deque = deque(maxlen=maxsize)
+        self._getter_futures: deque = deque()
+
+    def put_nowait(self, item: Any) -> None:
+        """synchronously drops an item into the queue. drops the oldest if full."""
+        while self._getter_futures:
+            future = self._getter_futures.popleft()
+            if not future.done():
+                future.set_result(item)
+                return
+        
+        self._queue.append(item)
+
+    async def get(self) -> Any:
+        """asynchronously waits for and pops the oldest item in the queue."""
+        if self._queue:
+            return self._queue.popleft()
+
+        loop = asyncio.get_running_loop()
+        future = loop.create_future()
+        self._getter_futures.append(future)
+        return await future
+
+    def task_done(self) -> None:
+        """maintains structural compatibility with standard asyncio.Queue APIs."""
+        pass
+
+
+packet_queue = EvictingAsyncQueue(maxsize=2000)
 packet_history = deque(maxlen=100)
 connection_starts = {}
-packet_queue = asyncio.Queue(maxsize=1000)
+
 
 def nsl_kdd_packet_parser(packet: Packet) -> dict:
     """
