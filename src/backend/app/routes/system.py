@@ -1,5 +1,7 @@
+import psutil
+import os
+
 from fastapi import APIRouter
-from app.utils.devices import list_devices
 
 system_router = APIRouter()
 
@@ -24,9 +26,7 @@ def get_system_usage():
     """
     system_cpu = psutil.cpu_percent(interval=1.0)
     mem_info = psutil.virtual_memory()
-    system_ram_percent = mem_info.percent
     system_ram_used_gb = mem_info.used / (1024**3)
-    system_ram_total_gb = mem_info.total / (1024**3)
 
     current_process = psutil.Process(os.getpid())
     process_cpu = current_process.cpu_percent(interval=None)
