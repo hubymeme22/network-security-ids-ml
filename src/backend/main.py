@@ -5,6 +5,7 @@ import threading
 import uvicorn
 
 from app.background.sniffer_worker import scapy_sniff_worker
+from app.background.db_initialize import initalize_database_contents
 from app.config.database import Base, engine
 from app.routes.auth import auth_router
 from app.routes.system import system_router
@@ -24,6 +25,9 @@ async def lifespan(app: FastAPI):
     # database initialization
     logger.info("Initializing database connection...")
     Base.metadata.create_all(bind=engine)
+
+    # intialization of values
+    initalize_database_contents()
 
     # scapy thread for packet saving
     worker_thread = threading.Thread(target=scapy_sniff_worker, args=(loop,), daemon=True)
