@@ -1,3 +1,4 @@
+import hashlib
 import logging
 import sqlalchemy as sa
 
@@ -31,7 +32,7 @@ def initalize_database_contents():
             if is_table_empty(db, UserTable):
                 db.add(UserTable(
                     username=DEFAULT_USERNAME,
-                    hashed_password=DEFAULT_PASSWORD,  
+                    hashed_password=hashlib.sha256(DEFAULT_PASSWORD).hexdigest(),  
                     is_active=True
                 ))
 
