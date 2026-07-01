@@ -8,7 +8,7 @@ application = FastAPI()
 ##############################
 #  main application routers  #
 ##############################
-application.add_route("/system", devices_router)
+application.add_route("/system", system_router)
 
 ######################
 # Websocket routers  #
