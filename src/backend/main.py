@@ -5,6 +5,8 @@ import threading
 import uvicorn
 
 from app.background.sniffer_worker import scapy_sniff_worker
+from app.config.database import Base, engine
+from app.routes.auth import auth_router
 from app.routes.system import system_router
 
 from contextlib import asynccontextmanager
@@ -18,6 +20,10 @@ logger = logging.getLogger("uvicorn.error")
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     loop = asyncio.get_running_loop()
+
+    # database initialization
+    logger.info("Initializing database connection...")
+    Base.metadata.create_all(bind=engine)
 
     # scapy thread for packet saving
     worker_thread = threading.Thread(target=scapy_sniff_worker, args=(loop,), daemon=True)
@@ -36,8 +42,8 @@ application = FastAPI(title="Real-Time ML-IDS API & Streaming Engine", lifespan=
 ##############################
 #  main application routers  #
 ##############################
-application.add_route("/system", system_router)
-
+application.include_router(system_router)
+application.include_router(auth_router)
 
 if __name__ == "__main__":
     if os.getuid() != 0:
