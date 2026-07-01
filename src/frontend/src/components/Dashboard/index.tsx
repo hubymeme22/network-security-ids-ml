@@ -32,7 +32,7 @@ export default function Dashboard({ username, onLogout }: DashboardProps) {
   const [isCapturing, setIsCapturing] = useState(true);
   const [isUnderAttack, setIsUnderAttack] = useState(false);
   const [sensitivity, setSensitivity] = useState(70); // Threshold for ML trigger
-  
+
   // Data State
   const [interfaces, setInterfaces] = useState<string[]>([]);
   const [selectedInterface, setSelectedInterface] = useState('');
@@ -44,12 +44,12 @@ export default function Dashboard({ username, onLogout }: DashboardProps) {
     activeThreats: 0,
     firewallStatus: 'Active'
   });
-  
+
   const [packets, setPackets] = useState<NetworkPacket[]>([]);
   const [alerts, setAlerts] = useState<SecurityAlert[]>([]);
   const [blockedIps, setBlockedIps] = useState<string[]>([]);
   const [isolatedIps, setIsolatedIps] = useState<string[]>([]);
-  
+
   // UI States
   const [packetFilter, setPacketFilter] = useState<'all' | 'threats' | 'normal'>('all');
   const [selectedPacket, setSelectedPacket] = useState<NetworkPacket | null>(null);
@@ -59,7 +59,7 @@ export default function Dashboard({ username, onLogout }: DashboardProps) {
 
   // SVG Chart History Data
   const [trafficHistory, setTrafficHistory] = useState<number[]>(Array(20).fill(10));
-  
+
   // Refs
   const wsRef = useRef<WebSocket | null>(null);
   const packetIdCounter = useRef(0);
@@ -74,12 +74,18 @@ export default function Dashboard({ username, onLogout }: DashboardProps) {
   useEffect(() => {
     const fetchInterfaces = async () => {
       try {
-        const res = await fetch('/devices/network-cards');
+        const token = localStorage.getItem('session_token');
+        const res = await fetch('/devices/network-cards', {
+          headers: {
+            'Authorization': token ? `Bearer ${token}` : '',
+          }
+        });
         if (res.ok) {
           const data = await res.json();
-          if (Array.isArray(data) && data.length > 0) {
-            setInterfaces(data);
-            setSelectedInterface(data[0]);
+          const list = Array.isArray(data) ? data : (data && Array.isArray(data.interfaces) ? data.interfaces : null);
+          if (list && list.length > 0) {
+            setInterfaces(list);
+            setSelectedInterface(list[0]);
             return;
           }
         }
@@ -96,6 +102,18 @@ export default function Dashboard({ username, onLogout }: DashboardProps) {
 
   // 2. Establish WebSocket connection if in Live Mode
   useEffect(() => {
+    setPackets([]);
+    setAlerts([]);
+    setMetrics({
+      cpuUsage: 0,
+      memoryUsage: 0,
+      bandwidthIn: 0,
+      bandwidthOut: 0,
+      activeThreats: 0,
+      firewallStatus: 'Active'
+    });
+    setTrafficHistory(Array(20).fill(0));
+
     if (!isLiveMode) {
       if (wsRef.current) {
         wsRef.current.close();
@@ -108,8 +126,8 @@ export default function Dashboard({ username, onLogout }: DashboardProps) {
     setWebSocketStatus('connecting');
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
     const host = window.location.host; // Will use Vite proxy server
-    const session = `sentinel_${Math.random().toString(36).substring(7)}`;
-    
+    const session = `${Math.random().toString(36).substring(7)}`;
+
     // Connect to WebSocket route
     const ws = new WebSocket(`${protocol}//${host}/live-inference/${session}`);
     wsRef.current = ws;
@@ -164,8 +182,8 @@ export default function Dashboard({ username, onLogout }: DashboardProps) {
 
   // 3. Simulated packet/alerts generator (Mock Mode fallback)
   useEffect(() => {
-    if (!isCapturing) return;
-    
+    if (!isCapturing || isLiveMode) return;
+
     const interval = setInterval(() => {
       const protocol = mockProtocols[Math.floor(Math.random() * mockProtocols.length)];
       let srcIp = mockIps[Math.floor(Math.random() * mockIps.length)];
@@ -177,7 +195,7 @@ export default function Dashboard({ username, onLogout }: DashboardProps) {
       let isThreat = false;
       let prediction: NetworkPacket['prediction'] = 'Normal';
       let confidence = parseFloat((0.85 + Math.random() * 0.14).toFixed(4));
-      
+
       const threatRoll = Math.random() * 100;
       const attackChance = isUnderAttack ? 60 : (100 - sensitivity);
 
@@ -190,7 +208,7 @@ export default function Dashboard({ username, onLogout }: DashboardProps) {
 
       const length = isThreat ? Math.floor(Math.random() * 1200 + 40) : Math.floor(Math.random() * 300 + 40);
       const service = mockServices[Math.floor(Math.random() * mockServices.length)];
-      const info = isThreat 
+      const info = isThreat
         ? `Anomaly: suspicious payload detected on service ${service.toUpperCase()}`
         : `Connection established on ${service.toUpperCase()}`;
 
@@ -270,10 +288,23 @@ export default function Dashboard({ username, onLogout }: DashboardProps) {
 
   useEffect(() => {
     const metricsInterval = setInterval(() => {
+      if (isLiveMode && webSocketStatus !== 'connected') {
+        setMetrics({
+          cpuUsage: 0,
+          memoryUsage: 0,
+          bandwidthIn: 0,
+          bandwidthOut: 0,
+          activeThreats: 0,
+          firewallStatus: 'Disabled'
+        });
+        setTrafficHistory(prev => [...prev.slice(1), 0]);
+        return;
+      }
+
       setMetrics(prev => {
         const cpuDelta = (Math.random() - 0.5) * 4;
         const memDelta = (Math.random() - 0.5) * 1.5;
-        
+
         let targetCpu = prev.cpuUsage + cpuDelta;
         let targetMem = prev.memoryUsage + memDelta;
 
@@ -282,7 +313,7 @@ export default function Dashboard({ username, onLogout }: DashboardProps) {
         } else {
           targetCpu = Math.max(8, Math.min(60, targetCpu));
         }
-        
+
         targetMem = Math.max(30, Math.min(80, targetMem));
 
         const baseIn = isUnderAttack ? 18.5 : 2.4;
@@ -312,7 +343,7 @@ export default function Dashboard({ username, onLogout }: DashboardProps) {
     }, 1500);
 
     return () => clearInterval(metricsInterval);
-  }, [isUnderAttack, alerts, isCapturing, blockedIps, isolatedIps]);
+  }, [isUnderAttack, alerts, isCapturing, blockedIps, isolatedIps, isLiveMode, webSocketStatus]);
 
   const handleBlockIp = (ip: string) => {
     if (!blockedIps.includes(ip)) {
@@ -347,7 +378,7 @@ export default function Dashboard({ username, onLogout }: DashboardProps) {
 
   return (
     <div className="min-h-screen bg-cyber-bg text-slate-100 flex flex-col font-sans relative">
-      
+
       {/* Toast Notification */}
       {toastMessage && (
         <Toast message={toastMessage.text} type={toastMessage.type} />
@@ -370,7 +401,7 @@ export default function Dashboard({ username, onLogout }: DashboardProps) {
 
       {/* Main Grid Content */}
       <main className="flex-1 p-6 grid grid-cols-1 xl:grid-cols-4 gap-6 max-w-[1600px] mx-auto w-full">
-        
+
         {/* Settings Panel Drawer */}
         {showSettings && (
           <SettingsPanel
@@ -446,7 +477,7 @@ export default function Dashboard({ username, onLogout }: DashboardProps) {
                   return acc;
                 }, 0);
 
-                const maxCategoryCount = Math.max(...['DoS', 'Portscan', 'BruteForce', 'Probe'].map(c => 
+                const maxCategoryCount = Math.max(...['DoS', 'Portscan', 'BruteForce', 'Probe'].map(c =>
                   packets.reduce((acc, p) => {
                     if (p.prediction === c) {
                       const isBlocked = blockedIps.includes(p.sourceIp) || blockedIps.includes(p.destinationIp) || isolatedIps.includes(p.sourceIp) || isolatedIps.includes(p.destinationIp);
@@ -457,7 +488,7 @@ export default function Dashboard({ username, onLogout }: DashboardProps) {
                 ), 5);
 
                 const percent = maxCategoryCount > 0 ? (count / maxCategoryCount) * 100 : 0;
-                
+
                 let barColor = 'bg-accent-primary';
                 if (cat === 'DoS') barColor = 'bg-accent-rose';
                 else if (cat === 'BruteForce') barColor = 'bg-accent-amber';
@@ -467,10 +498,10 @@ export default function Dashboard({ username, onLogout }: DashboardProps) {
                   <div key={cat} className="flex-1 flex flex-col items-center justify-end h-full">
                     {/* Count label */}
                     <span className="text-[10px] font-mono font-bold text-white mb-2">{count}</span>
-                    
+
                     {/* SVG/CSS Bar */}
                     <div className="w-full bg-cyber-bg border border-cyber-border rounded-t-md h-20 overflow-hidden flex items-end">
-                      <div 
+                      <div
                         className={`w-full rounded-t-sm transition-all duration-700 ease-out ${barColor}`}
                         style={{ height: `${percent}%` }}
                       ></div>
@@ -515,7 +546,7 @@ export default function Dashboard({ username, onLogout }: DashboardProps) {
 
       {/* Footer bar */}
       <footer className="border-t border-cyber-border bg-cyber-card/45 py-3 px-6 text-center mt-auto font-mono text-[9px] text-slate-500">
-        <span>SentinelCore // Security Console Console Deployment 2026 // Active Mode</span>
+        <span>ML-IDS // 2026 </span>
       </footer>
 
     </div>

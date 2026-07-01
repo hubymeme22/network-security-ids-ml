@@ -35,13 +35,13 @@ export default function DashboardHeader({
         </div>
         <div>
           <h1 className="font-bold text-sm tracking-widest text-white font-mono flex items-center gap-2">
-            SENTINEL<span className="text-accent-primary">CORE</span>
+            ML<span className="text-accent-primary">IDS</span>
             <span className="text-[10px] py-0.5 px-2 bg-cyber-border text-slate-400 rounded-full font-sans uppercase font-normal tracking-normal border border-cyber-border">
               {selectedInterface || 'lo'}
             </span>
           </h1>
           <p className="text-[10px] text-slate-500 font-mono mt-0.5">
-            SECURE DEPLOYMENT // SESSION: {username}@sentinel
+            SECURE DEPLOYMENT // SESSION: {username}@mlids
           </p>
         </div>
       </div>
@@ -53,17 +53,16 @@ export default function DashboardHeader({
           onClick={() => {
             setIsUnderAttack(!isUnderAttack);
             triggerToast(
-              !isUnderAttack 
+              !isUnderAttack
                 ? 'CRITICAL ALERT: Simulating network-wide DDoS and port scan anomaly.'
                 : 'Simulation normalized. Under attack mode disabled.',
               !isUnderAttack ? 'error' : 'info'
             );
           }}
-          className={`px-3 py-1.5 rounded-lg border text-xs font-semibold flex items-center gap-2 transition-all cursor-pointer ${
-            isUnderAttack 
-              ? 'bg-accent-rose/20 border-accent-rose text-accent-rose animate-pulse'
-              : 'bg-cyber-bg border-cyber-border text-slate-400 hover:text-white hover:border-accent-rose/50'
-          }`}
+          className={`px-3 py-1.5 rounded-lg border text-xs font-semibold flex items-center gap-2 transition-all cursor-pointer ${isUnderAttack
+            ? 'bg-accent-rose/20 border-accent-rose text-accent-rose animate-pulse'
+            : 'bg-cyber-bg border-cyber-border text-slate-400 hover:text-white hover:border-accent-rose/50'
+            }`}
         >
           <ShieldAlert className="w-3.5 h-3.5" />
           <span>{isUnderAttack ? 'ATTACK SIMULATION ON' : 'SIMULATE ATTACK'}</span>
@@ -76,11 +75,10 @@ export default function DashboardHeader({
               setIsLiveMode(false);
               triggerToast('Switched to simulated sandbox mode.');
             }}
-            className={`px-3 py-1 text-xs rounded-md font-medium transition-all cursor-pointer ${
-              !isLiveMode 
-                ? 'bg-cyber-card border border-cyber-border text-white shadow-sm' 
-                : 'text-slate-400 hover:text-white'
-            }`}
+            className={`px-3 py-1 text-xs rounded-md font-medium transition-all cursor-pointer ${!isLiveMode
+              ? 'bg-cyber-card border border-cyber-border text-white shadow-sm'
+              : 'text-slate-400 hover:text-white'
+              }`}
           >
             Mock Mode
           </button>
@@ -88,11 +86,10 @@ export default function DashboardHeader({
             onClick={() => {
               setIsLiveMode(true);
             }}
-            className={`px-3 py-1 text-xs rounded-md font-medium transition-all flex items-center gap-1.5 cursor-pointer ${
-              isLiveMode 
-                ? 'bg-accent-primary/20 border border-accent-primary/30 text-white' 
-                : 'text-slate-400 hover:text-white'
-            }`}
+            className={`px-3 py-1 text-xs rounded-md font-medium transition-all flex items-center gap-1.5 cursor-pointer ${isLiveMode
+              ? 'bg-accent-primary/20 border border-accent-primary/30 text-white'
+              : 'text-slate-400 hover:text-white'
+              }`}
           >
             <Radio className={`w-3 h-3 ${isLiveMode ? 'text-accent-cyan animate-pulse' : 'text-slate-500'}`} />
             <span>Live Backend</span>
@@ -102,13 +99,12 @@ export default function DashboardHeader({
         {/* Connection Status indicator */}
         {isLiveMode && (
           <div className="flex items-center gap-1.5">
-            <span className={`w-2 h-2 rounded-full ${
-              webSocketStatus === 'connected' 
-                ? 'bg-accent-emerald shadow-[0_0_8px_#10b981]' 
-                : webSocketStatus === 'connecting'
+            <span className={`w-2 h-2 rounded-full ${webSocketStatus === 'connected'
+              ? 'bg-accent-emerald shadow-[0_0_8px_#10b981]'
+              : webSocketStatus === 'connecting'
                 ? 'bg-accent-amber animate-pulse'
                 : 'bg-accent-rose'
-            }`}></span>
+              }`}></span>
             <span className="text-[10px] text-slate-500 uppercase font-mono tracking-wider">
               {webSocketStatus}
             </span>
@@ -118,11 +114,10 @@ export default function DashboardHeader({
         {/* Settings gear */}
         <button
           onClick={() => setShowSettings(!showSettings)}
-          className={`p-2 rounded-lg border transition-colors cursor-pointer ${
-            showSettings 
-              ? 'bg-cyber-card border-accent-primary text-accent-primary' 
-              : 'border-cyber-border hover:bg-cyber-card text-slate-400 hover:text-white'
-          }`}
+          className={`p-2 rounded-lg border transition-colors cursor-pointer ${showSettings
+            ? 'bg-cyber-card border-accent-primary text-accent-primary'
+            : 'border-cyber-border hover:bg-cyber-card text-slate-400 hover:text-white'
+            }`}
         >
           <Settings className="w-4 h-4" />
         </button>

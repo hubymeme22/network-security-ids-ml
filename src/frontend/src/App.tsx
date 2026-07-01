@@ -3,15 +3,26 @@ import LoginPanel from './components/Login';
 import Dashboard from './components/Dashboard';
 
 function App() {
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [user, setUser] = useState<string>('');
+  const [isLoggedIn, setIsLoggedIn] = useState(() => !!localStorage.getItem('session_token'));
+  const [user, setUser] = useState<string>(() => localStorage.getItem('username') || '');
 
   const handleLoginSuccess = (username: string) => {
     setUser(username);
     setIsLoggedIn(true);
+    localStorage.setItem('username', username);
   };
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    const token = localStorage.getItem('session_token');
+    if (token) {
+      try {
+        await fetch(`/auth/logout/${token}`, { method: 'DELETE' });
+      } catch (err) {
+        console.error('Logout request failed:', err);
+      }
+      localStorage.removeItem('session_token');
+      localStorage.removeItem('username');
+    }
     setIsLoggedIn(false);
     setUser('');
   };

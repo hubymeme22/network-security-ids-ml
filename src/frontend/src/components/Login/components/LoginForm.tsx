@@ -30,7 +30,7 @@ export default function LoginForm({
 
       <div>
         <label className="block text-xs font-medium uppercase tracking-wider text-slate-400 font-mono mb-2">
-          Clearance ID (Username)
+          Username
         </label>
         <div className="relative">
           <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-500">
@@ -49,7 +49,7 @@ export default function LoginForm({
 
       <div>
         <label className="block text-xs font-medium uppercase tracking-wider text-slate-400 font-mono mb-2">
-          Access Key (Password)
+          Password
         </label>
         <div className="relative">
           <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-500">
@@ -78,7 +78,7 @@ export default function LoginForm({
           type="submit"
           className="w-full py-2.5 px-4 bg-accent-primary hover:bg-accent-primary-hover text-white text-sm font-semibold rounded-lg shadow-md hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-accent-primary/50 transition-all cursor-pointer font-mono uppercase tracking-widest text-center"
         >
-          Request Clearance
+          Login
         </button>
       </div>
     </form>

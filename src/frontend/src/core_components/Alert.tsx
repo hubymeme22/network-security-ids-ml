@@ -8,7 +8,7 @@ interface AlertProps {
 
 export default function Alert({ message, type = 'error', className = '' }: AlertProps) {
   let colorClass = '';
-  
+
   switch (type) {
     case 'success':
       colorClass = 'border-accent-emerald/30 bg-accent-emerald/10 text-accent-emerald';
@@ -26,7 +26,7 @@ export default function Alert({ message, type = 'error', className = '' }: Alert
   }
 
   return (
-    <div className={`p-3 rounded-lg border text-xs flex items-start gap-2 animate-pulse-slow ${colorClass} ${className}`}>
+    <div className={`p-3 rounded-lg border text-xs flex items-start gap-2 ${colorClass} ${className}`}>
       <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
       <span>{message}</span>
     </div>

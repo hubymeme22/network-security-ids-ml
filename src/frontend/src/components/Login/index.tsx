@@ -45,6 +45,29 @@ export default function LoginPanel({ onLoginSuccess }: LoginPanelProps) {
     setIsVerifying(true);
     setLogs([]);
 
+    // Start authenticating against the backend
+    let authResult: { success: boolean; session?: string | null; error?: string } | null = null;
+
+    fetch('/auth/login', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ username, password }),
+    })
+      .then(res => {
+        if (!res.ok) {
+          throw new Error('Authentication error.');
+        }
+        return res.json();
+      })
+      .then(data => {
+        authResult = data;
+      })
+      .catch(err => {
+        authResult = { success: false, error: err.message || 'Connection refused.' };
+      });
+
     // Start terminal boot sequence
     let currentLogIndex = 0;
     const interval = setInterval(() => {
@@ -54,32 +77,44 @@ export default function LoginPanel({ onLoginSuccess }: LoginPanelProps) {
         currentLogIndex++;
       } else {
         clearInterval(interval);
-        
-        // Final authentication check
-        setTimeout(() => {
-          if (username === 'admin' && password === 'admin') {
+
+        // Wait for authResult if it hasn't resolved yet, then proceed
+        const checkAuthAndComplete = () => {
+          if (authResult === null) {
+            setTimeout(checkAuthAndComplete, 100);
+            return;
+          }
+
+          if (authResult.success && authResult.session) {
+            // Save token
+            localStorage.setItem('session_token', authResult.session);
+
             setLogs(prev => [
               ...prev,
               'ACCESS: Granted.',
               'SYS: Loading SentinelCore dashboard...',
               'SYS: Session established successfully.'
             ]);
+
             setTimeout(() => {
               onLoginSuccess(username);
             }, 1000);
           } else {
+            const displayError = authResult.error || 'Invalid credentials or insufficient security clearance.';
             setLogs(prev => [
               ...prev,
               'ACCESS: DENIED.',
-              'ERR: Invalid credentials or insufficient security clearance.',
+              `ERR: ${displayError}`,
               'SYS: Terminating connection.'
             ]);
             setTimeout(() => {
               setIsVerifying(false);
-              setErrorMsg('Invalid username or password. (Hint: Use admin/admin)');
+              setErrorMsg(displayError);
             }, 1200);
           }
-        }, 800);
+        };
+
+        setTimeout(checkAuthAndComplete, 400);
       }
     }, 400);
   };
@@ -95,7 +130,7 @@ export default function LoginPanel({ onLoginSuccess }: LoginPanelProps) {
 
         {/* Main Card */}
         <div className="relative glassmorphic border border-cyber-border rounded-xl p-8 shadow-2xl overflow-hidden bg-cyber-card/90">
-          
+
           {/* Futuristic laser scanner line when authenticating */}
           {isVerifying && (
             <div className="absolute top-0 left-0 right-0 h-0.5 bg-accent-primary shadow-[0_0_10px_#6366f1] animate-scan z-10 pointer-events-none"></div>
@@ -107,7 +142,7 @@ export default function LoginPanel({ onLoginSuccess }: LoginPanelProps) {
               <Shield className="w-8 h-8 animate-pulse-slow" />
             </div>
             <h1 className="text-xl font-bold tracking-tight text-white flex items-center justify-center gap-2">
-              SENTINEL<span className="text-accent-primary">CORE</span>
+              ML<span className="text-accent-primary">IDS</span>
             </h1>
             <p className="text-xs text-slate-400 mt-1 uppercase tracking-wider font-mono">
               Intrusion Detection Gateway
@@ -134,7 +169,7 @@ export default function LoginPanel({ onLoginSuccess }: LoginPanelProps) {
           {/* Footer Info */}
           <div className="mt-8 pt-4 border-t border-cyber-border/40 text-center">
             <p className="text-[10px] text-slate-500 font-mono">
-              SentinelCore v1.0.0 // SECURE NODE
+              MLIDS v1.0.0
             </p>
           </div>
         </div>
