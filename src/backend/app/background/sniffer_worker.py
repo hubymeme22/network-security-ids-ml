@@ -1,10 +1,13 @@
 import asyncio
+import logging
 import time
 
 from collections import deque
 from scapy.layers.inet import IP, TCP, UDP, ICMP
 from scapy.packet import Packet
 from scapy.all import sniff
+
+logger = logging.getLogger("uvicorn.error")
 
 packet_history = deque(maxlen=100)
 connection_starts = {}
@@ -138,7 +141,7 @@ def nsl_kdd_packet_parser(packet: Packet) -> dict:
     return kdd_features
 
 
-def scapy_sniff_worker(loop):
+def scapy_sniff_worker(loop: asyncio.AbstractEventLoop):
     """
     runs in a dedicated background thread. Parses packets synchronously,
     then threadsafely pushes the dictionary into FastAPI's async event loop queue.
@@ -147,7 +150,7 @@ def scapy_sniff_worker(loop):
         if packet.haslayer(IP):
             features = nsl_kdd_packet_parser(packet)
             if features:
-                asyncio.run_coroutine_threadsafe(packet_queue.put(features), loop)
+                loop.call_soon_threadsafe(packet_queue.put_nowait, features)
 
-    print("Starting background network sniffing via Scapy...")
+    logger.info("Starting background network sniffing via Scapy...")
     sniff(filter="ip", prn=packet_handler, store=0)

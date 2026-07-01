@@ -1,32 +1,47 @@
-from app.routes.system import system_router
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect
-
+import asyncio
+import logging
+import os
+import threading
 import uvicorn
 
-application = FastAPI()
+from app.background.sniffer_worker import scapy_sniff_worker
+from app.routes.system import system_router
+
+from contextlib import asynccontextmanager
+from fastapi import FastAPI
+
+logger = logging.getLogger("uvicorn.error")
+
+########################
+#  application events  #
+########################
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    loop = asyncio.get_running_loop()
+
+    # scapy thread for packet saving
+    worker_thread = threading.Thread(target=scapy_sniff_worker, args=(loop,), daemon=True)
+    worker_thread.start()
+
+    logger.info("IDS Engine: Scapy worker thread successfully spawned.")
+    yield
+
+    # after shutdown process
+    logger.warning("IDS Engine: Cleaning up and shutting down gracefully...")
+
+
+# application with applied lifespan for startup
+application = FastAPI(title="Real-Time ML-IDS API & Streaming Engine", lifespan=lifespan)
 
 ##############################
 #  main application routers  #
 ##############################
 application.add_route("/system", system_router)
 
-######################
-# Websocket routers  #
-######################
-@application.websocket("/live-inference/{session}")
-async def websocket_process(websocket: WebSocket, session: str):
-    """
-    Returns the live inference being received by the system
-    """
-    await websocket.accept()
-    try:
-        while True:
-            data = await websocket.receive_text()
-            await websocket.send_text(f"Message received: {data}")
-
-    except WebSocketDisconnect:
-        print("Client disconnected cleanly.")
-
 
 if __name__ == "__main__":
+    if os.getuid() != 0:
+        print("[!] This backend must be executed as root!")
+        exit(1)
+
     uvicorn.run(application, port=8080, host="0.0.0.0")
