@@ -1,9 +1,12 @@
 import psutil
 import os
 
+from app.middleware.auth_middleware import AuthMetricsRoute
 from fastapi import APIRouter
 
-system_router = APIRouter()
+
+system_router = APIRouter(prefix="/system", route_class=AuthMetricsRoute)
+
 
 @system_router.get("/network-cards")
 def get_system_devices():
