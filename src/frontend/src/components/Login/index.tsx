@@ -9,11 +9,7 @@ interface LoginPanelProps {
 }
 
 const bootLogs = [
-  'SYSTEM: Initializing security handshake...',
-  'NET: Connecting to authentication gateway (Port 443)...',
-  'TLS: Handshake successful. TLS_AES_256_GCM_SHA384 active.',
-  'SEC: Requesting authorization token...',
-  'DB: Validating cryptographic signature...',
+  'Testing Backend Connection...'
 ];
 
 export default function LoginPanel({ onLoginSuccess }: LoginPanelProps) {
@@ -92,8 +88,6 @@ export default function LoginPanel({ onLoginSuccess }: LoginPanelProps) {
             setLogs(prev => [
               ...prev,
               'ACCESS: Granted.',
-              'SYS: Loading SentinelCore dashboard...',
-              'SYS: Session established successfully.'
             ]);
 
             setTimeout(() => {
