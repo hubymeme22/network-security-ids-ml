@@ -9,6 +9,7 @@ from app.background.db_initialize import initalize_database_contents
 from app.config.database import Base, engine
 from app.routes.auth import auth_router
 from app.routes.system import system_router
+from app.routes.sniffer import sniffer_router
 
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
@@ -48,6 +49,7 @@ application = FastAPI(title="Real-Time ML-IDS API & Streaming Engine", lifespan=
 ##############################
 application.include_router(system_router)
 application.include_router(auth_router)
+application.include_router(sniffer_router)
 
 if __name__ == "__main__":
     if os.getuid() != 0:

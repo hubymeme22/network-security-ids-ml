@@ -1,11 +1,13 @@
 import asyncio
 import logging
 import time
+import threading
 
 from collections import deque
 from scapy.layers.inet import IP, TCP, UDP, ICMP
 from scapy.packet import Packet
 from scapy.all import sniff
+from scapy.arch import compile_filter
 from typing import Any
 
 
@@ -178,6 +180,52 @@ def nsl_kdd_packet_parser(packet: Packet) -> dict:
     return kdd_features
 
 
+class SnifferManager:
+    """
+    Manages the runtime state of the Scapy sniffer worker,
+    allowing thread-safe filter updates and restarts.
+    """
+    def __init__(self):
+        self.filter_string = "ip"
+        self._restart_event = threading.Event()
+        self._stop_event = threading.Event()
+        self._lock = threading.Lock()
+
+    def get_filter(self) -> str:
+        with self._lock:
+            return self.filter_string
+
+    def set_filter(self, filter_str: str) -> bool:
+        """
+        Validates the BPF filter string. If valid, updates the filter and triggers a restart.
+        """
+        try:
+            # validate BPF syntax using Scapy's internal compiler
+            compile_filter(filter_str, linktype=1)
+        except Exception as e:
+            logger.error(f"Failed to validate filter '{filter_str}': {e}")
+            raise ValueError(f"Invalid BPF filter string: {e}")
+
+        with self._lock:
+            self.filter_string = filter_str
+            self._restart_event.set()
+        return True
+
+    def should_stop(self) -> bool:
+        return self._stop_event.is_set()
+
+    def check_restart(self) -> bool:
+        return self._restart_event.is_set()
+
+    def clear_restart(self):
+        self._restart_event.clear()
+
+    def stop(self):
+        self._stop_event.set()
+        self._restart_event.set()
+
+sniffer_manager = SnifferManager()
+
 def scapy_sniff_worker(loop: asyncio.AbstractEventLoop):
     """
     runs in a dedicated background thread. Parses packets synchronously,
@@ -189,5 +237,26 @@ def scapy_sniff_worker(loop: asyncio.AbstractEventLoop):
             if features:
                 loop.call_soon_threadsafe(packet_queue.put_nowait, features)
 
+    def stop_filter(packet):
+        return sniffer_manager.check_restart() or sniffer_manager.should_stop()
+
     logger.info("Starting background network sniffing via Scapy...")
-    sniff(filter="ip", prn=packet_handler, store=0)
+    while not sniffer_manager.should_stop():
+        # clear the restart event at the beginning of this run
+        sniffer_manager.clear_restart()
+        current_filter = sniffer_manager.get_filter()
+        logger.info(f"IDS Engine: Starting Scapy sniff with filter: '{current_filter}'")
+
+        try:
+            # use timeout=1.0 so that if there's no traffic, the sniff call will time out
+            # and allow the loop to check should_stop() or get a new filter.
+            # stop_filter will handle the case where traffic IS flowing and we want to stop immediately.
+            sniff(filter=current_filter, prn=packet_handler, store=0, stop_filter=stop_filter, timeout=1.0)
+
+        except Exception as e:
+            logger.error(f"IDS Engine: Error during sniffing with filter '{current_filter}': {e}")
+            if current_filter != "ip":
+                logger.warning("Reverting filter to default 'ip' due to sniffing runtime error.")
+                with sniffer_manager._lock:
+                    sniffer_manager.filter_string = "ip"
+            time.sleep(1.0)
