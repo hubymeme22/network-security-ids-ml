@@ -1,4 +1,4 @@
-from app.routes.devices import devices_router
+from app.routes.system import system_router
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 
 import uvicorn
@@ -8,7 +8,7 @@ application = FastAPI()
 ##############################
 #  main application routers  #
 ##############################
-application.add_route("/devices", devices_router)
+application.add_route("/system", devices_router)
 
 ######################
 # Websocket routers  #
