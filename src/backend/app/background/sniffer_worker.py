@@ -2,7 +2,16 @@ import asyncio
 import logging
 import time
 import threading
+import os
+import pickle
+import numpy as np
 
+from app.config.app_config import FLAG_MAP
+from app.config.app_config import PROTOCOL_MAP
+from app.config.app_config import SERVICE_MAP
+from app.lib.dsa import EvictingAsyncQueue
+from app.lib.dsa import ScalerLoader
+from app.lib.dsa import ModelLoader
 from collections import deque
 from scapy.layers.inet import IP, TCP, UDP, ICMP
 from scapy.packet import Packet
@@ -12,44 +21,12 @@ from typing import Any
 
 
 logger = logging.getLogger("uvicorn.error")
-
-class EvictingAsyncQueue:
-    """
-    Asyncronous DSA that removes old queued packets
-    """
-    def __init__(self, maxsize: int):
-        self.maxsize = maxsize
-        self._queue: deque = deque(maxlen=maxsize)
-        self._getter_futures: deque = deque()
-
-    def put_nowait(self, item: Any) -> None:
-        """synchronously drops an item into the queue. drops the oldest if full."""
-        while self._getter_futures:
-            future = self._getter_futures.popleft()
-            if not future.done():
-                future.set_result(item)
-                return
-        
-        self._queue.append(item)
-
-    async def get(self) -> Any:
-        """asynchronously waits for and pops the oldest item in the queue."""
-        if self._queue:
-            return self._queue.popleft()
-
-        loop = asyncio.get_running_loop()
-        future = loop.create_future()
-        self._getter_futures.append(future)
-        return await future
-
-    def task_done(self) -> None:
-        """maintains structural compatibility with standard asyncio.Queue APIs."""
-        pass
-
-
 packet_queue = EvictingAsyncQueue(maxsize=2000)
 packet_history = deque(maxlen=100)
 connection_starts = {}
+
+scale_loader = ScalerLoader()
+ml_model = ModelLoader()
 
 
 def nsl_kdd_packet_parser(packet: Packet) -> dict:
@@ -179,6 +156,41 @@ def nsl_kdd_packet_parser(packet: Packet) -> dict:
 
     return kdd_features
 
+
+def nsl_kdd_features_to_array(features: dict) -> list:
+    """
+    converts the output dictionary of nsl_kdd_packet_parser into a list (array)
+    ordered by the specific sequence expected by the ML model.
+    """
+    if not features:
+        return []
+
+    sequence = [
+        'duration', 'protocol_type', 'service', 'flag', 'src_bytes',
+        'dst_bytes', 'land', 'wrong_fragment', 'urgent', 'hot',
+        'num_failed_logins', 'logged_in', 'num_compromised', 'root_shell',
+        'su_attempted', 'num_root', 'num_file_creations', 'num_shells',
+        'num_access_files', 'num_outbound_cmds', 'is_host_login',
+        'is_guest_login', 'count', 'srv_count', 'serror_rate',
+        'srv_serror_rate', 'rerror_rate', 'srv_rerror_rate', 'same_srv_rate',
+        'diff_srv_rate', 'srv_diff_host_rate', 'dst_host_count',
+        'dst_host_srv_count', 'dst_host_same_srv_rate',
+        'dst_host_diff_srv_rate', 'dst_host_same_src_port_rate',
+        'dst_host_srv_diff_host_rate', 'dst_host_serror_rate',
+        'dst_host_srv_serror_rate', 'dst_host_rerror_rate',
+        'dst_host_srv_rerror_rate'
+    ]
+
+    converted = [features.get(key) for key in sequence]
+
+    # categorical to numerical value
+    converted[1] = PROTOCOL_MAP.get(features.get("protocol_type"), PROTOCOL_MAP["other"])
+    converted[2] = SERVICE_MAP.get(features.get("service"), SERVICE_MAP["other"])
+    converted[3] = FLAG_MAP.get(features.get("service"), FLAG_MAP["other"])
+
+    # scale the contents
+    scaler = scale_loader.loader
+    return scaler.fit_transform([converted])
 
 class SnifferManager:
     """
